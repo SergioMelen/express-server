@@ -1,16 +1,21 @@
 const express = require('express');
 const router = express.Router();
-let tasks = [
-  { id: 1, tarea: 'Hacer la compra', completada: false },
-  { id: 2, tarea: 'Estudiar para el examen', completada: true },
-];
+
+router.use((req, res, next) => {
+  if (req.method === 'POST' || req.method === 'PUT') {
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: 'Cuerpo de la solicitud vacío.' });
+    }
+    const { tarea, completada } = req.body;
+    if (!tarea || typeof completada !== 'boolean') {
+      return res.status(400).json({ error: 'Los datos de la tarea son inválidos.' });
+    }
+  }
+next();
+});
 
 router.post('/crear', (req, res) => {
   const { tarea, completada } = req.body;
-
-  if (!tarea || typeof completada !== 'boolean') {
-    return res.status(400).json({ error: 'Los datos de la tarea son inválidos.' });
-  }
 
   const newTask = { id: tasks.length + 1, tarea, completada };
   tasks.push(newTask);
