@@ -27,25 +27,87 @@ const validarMetodoHTTP = (req, res, next) => {
 
 app.use(validarMetodoHTTP);
 
-// Nueva ruta para la raíz de la aplicación
-app.get('/', (req, res) => {
-  res.send('¡Bienvenido a la página de inicio!');
+//Lista de tareas 
+let tasks = [
+  { id: 1, title: 'Hacer la compra', completed: false },
+  { id: 2, title: 'Estudiar para el examen', completed: true },
+];
+
+// Obtener todas las tareas
+app.get('/tasks', (req, res) => {
+  res.status(200).json(tasks);
 });
 
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = users.find((user) => user.username === username && user.password === password);
+// Obtener tareas completas
+app.get('/tasks/completed', (req, res) => {
+  const completedTasks = tasks.filter(task => task.completed);
+  res.status(200).json(completedTasks);
+});
 
-  if (!user) {
-    return res.status(401).json({ error: 'Credenciales incorrectas' });
+//Obtener tareas incompletas
+app.get('/tasks/incomplete', (req, res) => {
+  const incompleteTasks = tasks.filter(task => !task.completed);
+  res.status(200).json(incompleteTasks);
+});
+
+//Obtener una sola tarea por su ID
+app.get('/tasks/:id', (req, res) => {
+  const taskId = parseInt(req.params.id);
+  const task = tasks.find(task => task.id === taskId);
+
+  if (task) {
+    res.status(200).json(task);
+  } else {
+    res.status(404).json({ error: 'Tarea no encontrada' });
+  }
+});
+
+//Crear nueva tarea
+app.post('/tasks', (req, res) => {
+  const { title } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'El título es requerido' });
   }
 
-  const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-  res.json({ token });
+  const newTask = { id: tasks.length + 1, title, completed: false };
+  tasks.push(newTask);
+  res.status(201).json(newTask);
 });
 
-const verificarToken = (req, res, next) => {
+//Actualizar tarea
+app.put('/tasks/:id', (req, res) => {
+  const taskId = parseInt(req.params.id);
+  const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+  if (taskIndex !== -1) {
+    tasks[taskIndex].title = req.body.title || tasks[taskIndex].title;
+    tasks[taskIndex].completed = req.body.completed || tasks[taskIndex].completed;
+
+    res.status(200).json(tasks[taskIndex]);
+  } else {
+    res.status(404).json({ error: 'Tarea no encontrada' });
+  }
+});
+
+//Eliminar tarea
+app.delete('/tasks/:id', (req, res) => {
+  const taskId = parseInt(req.params.id);
+  const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+  if (taskIndex !== -1) {
+    tasks.splice(taskIndex, 1);
+    res.status(200).json({ message: 'Tarea eliminada exitosamente' });
+  } else {
+    res.status(404).json({ error: 'Tarea no encontrada' });
+  }
+});
+app.get('/', (req, res) => {
+  res.send('¡Bienvenido a la página de inicio nuevo!');
+});
+app.get('/ruta-protegida', verificarToken, (req, res) => {
+  res.json({ mensaje: 'Ruta protegida exitosamente', usuario: req.user });
+});
+function verificarToken(req, res, next) {
   const token = req.headers.authorization;
 
   if (!token) {
@@ -60,13 +122,8 @@ const verificarToken = (req, res, next) => {
     req.user = decoded;
     next();
   });
-};
-
-app.get('/ruta-protegida', verificarToken, (req, res) => {
-  res.json({ mensaje: 'Ruta protegida exitosamente', usuario: req.user });
-});
-
-const PORT = process.env.PORT || 8000;
+}
+const PORT = process.env.PORT || 7000;
 app.listen(PORT, () => {
   console.log(`Servidor Express escuchando en el puerto ${PORT}`);
 });
